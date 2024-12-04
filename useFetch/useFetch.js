@@ -1,42 +1,55 @@
 import { useEffect, useState } from "react";
+import { useMemo } from 'react';
 
+export const useForm = (initialForm = {}, formValidations = {}) => {
+  const [formState, setFormState] = useState(initialForm);
+  const [formValidation, setFormValidation] = useState({});
+  
 
-export const useFetch = ( url ) => {
+  useEffect(() => {
+    createValidators();
+  }, [formState]);
 
-    const [state, setState] = useState({
-        data: null,
-        isLoading: true,
-        hasError: null,
-    })
-
-
-    const getFetch = async () => {
-
-        setState({
-            ...state,
-            isLoading: true,
-        });
-
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        setState({
-            data,
-            isLoading: false,
-            hasError: null,
-        });
+const isFormValid = useMemo(() => {
+    for (const formValue of Object.keys(formValidation)) {
+      if (formValidation[formValue] !== null) {
+        return false;
+      }
     }
+    return true;
+  }, [formValidation]);
 
+  const onInputChange = ({ target }) => {
+    const { name, value } = target;
+    setFormState({
+      ...formState,
+      [name]: value,
+    });
+  };
 
-    useEffect(() => {
-        getFetch();
-    }, [url])
-    
+  const onResetForm = () => {
+    setFormState(initialForm);
+  };
+  const createValidators = () => {
+    const formCheckedValues = {};
 
+    for (const formField of Object.keys( formValidations )) {
+      const [fn, errorMessage ] = formValidations[formField];
 
-    return {
-        data:      state.data,
-        isLoading: state.isLoading,
-        hasError:  state.hasError,
-    };
-}
+      
+      formCheckedValues[`${formField}Valid`] = fn(formState[formField])
+        ? null
+        : errorMessage;        
+    }
+     setFormValidation(formCheckedValues);     
+  };
+
+  return {
+    ...formState,
+    formState,
+    onInputChange,
+    onResetForm,
+    ...formValidation,
+    isFormValid
+  };
+};
